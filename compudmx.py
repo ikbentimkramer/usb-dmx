@@ -3,11 +3,14 @@ import dmx
 import threading
 import random
 
-sender = dmx.DMX_Serial('COM3')
+sender = dmx.DMX_Serial('COM3') # 'COM3' has to be changed to the port
+                                # the dmx-cable is on.
 data = [0] * 512
-freq = 0.25 # is in seconds
-gens = 0
-channels = [0, 8]
+freq = 0.25 # clockspeed in seconds
+gens = 0 
+channels = [0, 8] # list of starting channel of each lamp. It is
+                  # assumed that the first three channels of each lamp
+                  # are red, green and blue
 
 def setbpm(bpm) :
     global freq
@@ -22,17 +25,22 @@ def doclock() :
     execute()
     sender.start()
     sender.set_data(bytes(data))
-    time.sleep(0.0001)
+    time.sleep(0.0001) # sleeping 0.1 ms to make sure new data is sent
+                       # before sending is stopped.
     sender.stop()
 
 def execute() :
     next(gens)
 
 def chase(scenes) :
+    # This function makes an endless generator that loops through all
+    # scenes. A scene is a list of keys that can be found in the
+    # dictionary 'colors'.
     global data
     i = 0
     while True :
-        if i < len(scenes) :
+        if i < len(scenes) : # This stuff can probably be done more
+                             # pythonically with list comprehensions.
             scene = scenes[i]
             for j in list(zip(channels, scene)) :
                 color = colors[j[1]]
@@ -45,8 +53,8 @@ def chase(scenes) :
             i = 0
 
 def randlights(nlamps, nscenes, colors) :
-    # nlamps: number of lamps
-    # nscenes: number of scenes
+    # generates a random list of nscenes scenes for nlamps lamps. A
+    # scene is a list of keys from dictionary colors.
     res = []
     for i in range(nscenes) :
         res.append([])
@@ -55,6 +63,7 @@ def randlights(nlamps, nscenes, colors) :
     return res
 
 def repl() :
+    # The name of this function stands for read-evaluate-print-loop.
     global gens
     while True :
         print(data[0:15])
@@ -108,11 +117,15 @@ chases = {
                           ["magenta", "pink"],
                           ["pink", "red"]]),
     "blackout" : chase([["black", "black"]]),
-    "random" : lambda : chase(randlights(2, 8, colors))
+    "random" : lambda : chase(randlights(2, 8, colors)) 
+    # The chase in "random is in a lambda so each execution gives a
+    # different random set of lights.
 }
 
-gens = chases["blackout"]
-clk = threading.Thread(target = clock)
+gens = chases["blackout"] # set default chase
+clk = threading.Thread(target = clock) # clock is threaded, because
+                                       # otherwise we would not be
+                                       # able to take inputs.
 clk.daemon = True
 clk.start()
-repl()
+repl() 
