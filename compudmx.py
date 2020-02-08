@@ -23,7 +23,8 @@ def clock() :
 
 def doclock() :
     execute()
-    sender.start()
+    sender.start() # sending continuously makes the lamps flicker, so
+                   # we start and stop sending once a clockcycle.
     sender.set_data(bytes(data))
     time.sleep(0.0001) # sleeping 0.1 ms to make sure new data is sent
                        # before sending is stopped.
