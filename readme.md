@@ -38,9 +38,9 @@ python compudmx.py
 Type in a valid command and watch the lights change.
 
 Valid commands:
-* `blackout` : turns the lights off
-* `mayday` : yellow-blue blue-yellow chase
-* `colorwheel` : colorwheel chase
-* `random` : random chase. Each time you enter this command, a different random chase will play
-* `exit` : stops the repl (read-evaluate-print-loop, the thing understanding the commands)
-<number> : Typing a number will set the bpm (beats per minute) of the internal clock to that number.
+* `blackout` turns the lights off
+* `mayday` yellow-blue blue-yellow chase
+* `colorwheel` colorwheel chase
+* `random` random chase. Each time you enter this command, a different random chase will play
+* `exit` stops the repl (read-evaluate-print-loop, the thing understanding the commands)
+* `<number>` typing a number will set the bpm (beats per minute) of the internal clock to that number.
