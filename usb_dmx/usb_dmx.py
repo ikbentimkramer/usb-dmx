@@ -1,6 +1,7 @@
 import serial
 import threading
 import queue
+from usb_dmx.dataclasses import DummyQueue
 
 
 class DMXConnection(threading.Thread):
@@ -18,18 +19,22 @@ class DMXConnection(threading.Thread):
     # frame (like MARK_AFTER_BREAK) starts with a leading zero.
 
     def __init__(self, port: str, data_queue: queue.Queue[bytes]) -> None:
-        self.connection = serial.Serial(port=port,
-                                        baudrate=self.BAUDRATE,
-                                        bytesize=self.BYTESIZE,
-                                        parity=self.PARITY,
-                                        stopbits=self.STOPBITS)
+        super().__init__(daemon=True)
+        if port.startswith('loop://'):  # used for testing
+            self.connection = serial.serial_for_url(port)
+            self.connection.baudrate = self.BAUDRATE
+            self.connection.bytesize = self.BYTESIZE
+            self.connection.parity = self.PARITY
+            self.connection.stopbits = self.STOPBITS
+            self.connection.queue = DummyQueue()
+        else:
+            self.connection = serial.Serial(port=port,
+                                            baudrate=self.BAUDRATE,
+                                            bytesize=self.BYTESIZE,
+                                            parity=self.PARITY,
+                                            stopbits=self.STOPBITS)
         self.data_queue = data_queue
         self.terminated = threading.Event()
-        self.timeout = 0.00008
-        self.daemon = True
-
-    def exit(self) -> None:
-        self.terminated.set()
 
     def run(self) -> None:
         data = b'\x00' * 512
