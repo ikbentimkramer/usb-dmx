@@ -35,6 +35,8 @@ class DMXConnection(threading.Thread):
                                             stopbits=self.STOPBITS)
         self.data_queue = data_queue
         self.terminated = threading.Event()
+        self.timeout = 0.5
+        self.name = 'DMXConnection'
 
     def run(self) -> None:
         data = b'\x00' * 512
