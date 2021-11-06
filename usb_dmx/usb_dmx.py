@@ -1,7 +1,8 @@
 import serial
 import threading
 import queue
-from usb_dmx.dataclasses import DummyQueue
+import time
+from usb_dmx.dataclasses import BPM, DummyQueue
 
 
 class DMXConnection(threading.Thread):
@@ -53,3 +54,18 @@ class DMXConnection(threading.Thread):
                 self.connection.write(self.MARK_AFTER_BREAK + self.STARTCODE)
                 self.connection.write(data)
                 self.connection.flush()
+
+
+class Clock(threading.Thread):
+    def __init__(self, bpm: BPM) -> None:
+        super().__init__(daemon=True)
+        self.bpm = bpm
+        self.pulse = threading.Event()
+        self.terminated = threading.Event()
+        self.name = 'Clock'
+
+    def run(self) -> None:
+        while not self.terminated.is_set():
+            time.sleep(60 / self.bpm)
+            self.pulse.set()
+            self.pulse.clear()
