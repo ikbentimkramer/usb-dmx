@@ -2,7 +2,7 @@ import serial
 import threading
 import queue
 import time
-from usb_dmx.dataclasses import BPM, DummyQueue
+from usb_dmx.dataclasses import BPM, Chase, DummyQueue
 
 
 class DMXConnection(threading.Thread):
@@ -69,3 +69,32 @@ class Clock(threading.Thread):
             time.sleep(60 / self.bpm)
             self.pulse.set()
             self.pulse.clear()
+
+
+class DataProducer(threading.Thread):
+    def __init__(self, port: str, default_gen: Chase,
+                 bpm: BPM = BPM(120)) -> None:
+        super().__init__(daemon=True)
+        self.clock = Clock(bpm)
+        self.data_queue: queue.Queue = queue.Queue(2)
+        self.gen_queue: queue.Queue = queue.Queue(2)
+        self.gen_queue.put(default_gen)
+        self.dmx = DMXConnection(port, self.data_queue)
+        self.terminated = threading.Event()
+        self.clock_timeout = 5
+        self.dmx_timeout = 1
+        self.name = 'Producer'
+
+    def run(self) -> None:
+        self.clock.start()
+        self.dmx.start()
+        gen = self.gen_queue.get_nowait()
+        while not self.terminated.is_set():
+            self.clock.pulse.wait(self.clock_timeout)
+            try:
+                gen = self.gen_queue.get_nowait()
+            except queue.Empty:
+                pass
+            self.data_queue.put(next(gen), True, self.dmx_timeout)
+        self.clock.terminated.set()
+        self.dmx.terminated.set()
