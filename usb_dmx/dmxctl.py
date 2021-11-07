@@ -12,13 +12,7 @@ class DMXConnection(threading.Thread):
     PARITY = serial.PARITY_NONE
     STOPBITS = serial.STOPBITS_TWO
     STARTCODE = b'\x00'
-    BREAK_LEN = 0.000068  # In seconds.
-    MARK_AFTER_BREAK = b'\x01'
-
-    # BREAK_LEN and the leading zeroes of MARK_AFTER_BREAK should add
-    # up to 100 microseconds. A bit takes 4 microseconds to send and a
-    # frame (like MARK_AFTER_BREAK) starts with a leading zero.
-
+    BREAK_LEN = 0.0001  # In seconds.
     def __init__(self, port: str, data_queue: queue.Queue[bytes]) -> None:
         super().__init__(daemon=True)
         if port.startswith('loop://'):  # used for testing
@@ -51,7 +45,7 @@ class DMXConnection(threading.Thread):
                 # consists at least of a break, mark after break,
                 # startcode and data. The data may be up to 512 bytes.
                 self.connection.send_break(self.BREAK_LEN)
-                self.connection.write(self.MARK_AFTER_BREAK + self.STARTCODE)
+                self.connection.write(self.STARTCODE)
                 self.connection.write(data)
                 self.connection.flush()
 
