@@ -54,7 +54,7 @@ class LightControlCLI(cmd.Cmd):
 
     def put_generator(self, generator: Chase, timeout: float = 0.1) -> None:
         try:
-            self.controller.data_queue.put(generator, True, timeout)
+            self.controller.gen_queue.put(generator, True, timeout)
         except queue.Full as e:
             self.error_message(e)
 
@@ -106,7 +106,7 @@ class LightControlCLI(cmd.Cmd):
                 print('')  # newline
 
     def default(self, line: str) -> bool:
-        # For some reason the supeclass definition of this method has
+        # For some reason the superclass definition of this method has
         # type bool. This means this implementation needs to return
         # booleans as well.
         command, *arg = line.split()
@@ -119,13 +119,13 @@ class LightControlCLI(cmd.Cmd):
                 arg = [line]
             except ValueError:
                 self.unknown_command(command)
-                return True
+                return False
         try:
             self.put_generator(func(*arg))
-            return True
+            return False
         except Exception as e:
             self.error_message(e)
-            return True
+            return False
 
     def help_exit(self) -> None:
         self.header1('exit')
