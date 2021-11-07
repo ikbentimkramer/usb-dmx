@@ -1,6 +1,7 @@
 from usb_dmx.chase_generator import ChaseGenerator
 from usb_dmx.dmxctl import DataProducer
-from usb_dmx.dataclasses import BPM
+from usb_dmx.dataclasses import BPM, Chase
+import queue
 import cmd
 import textwrap
 
@@ -29,7 +30,7 @@ class LightControlCLI(cmd.Cmd):
         print(f'{barchar * 2} {title} {barchar * 2}\n')
 
     def paragraph(self,
-                  text,
+                  text: str,
                   indent: int = 3,
                   width: int = 72,
                   blankline: bool = True) -> None:
@@ -51,13 +52,19 @@ class LightControlCLI(cmd.Cmd):
 
     # -- General commands --
 
-    def do_exit(self, arg) -> int:
+    def put_generator(self, generator: Chase, timeout: float = 0.1) -> None:
+        try:
+            self.controller.data_queue.put(generator, True, timeout)
+        except queue.Full as e:
+            self.error_message(e)
+
+    def do_exit(self, arg: str) -> int:
         """Exit the light control program"""
         self.controller.terminated.set()
         self.controller.join()
         return 1
 
-    def do_help(self, arg) -> None:
+    def do_help(self, arg: str) -> None:
         """List all commands and show their documentation"""
         commands = [
             c.removeprefix('do_') for c in dir(self) if c.startswith('do_')
@@ -74,11 +81,11 @@ class LightControlCLI(cmd.Cmd):
             if arg in (commands + generators):
                 try:
                     func = getattr(self, f'help_{arg}')
+                    return func()
                 except AttributeError:
                     print(f'No documentation for command {arg}')
-                return func()
             else:
-                return self.unknown_command(arg)
+                self.unknown_command(arg)
         else:
             documented = sorted(
                 [h for h in help_pages if h in (commands + generators)])
@@ -98,7 +105,10 @@ class LightControlCLI(cmd.Cmd):
                 self.columnize(misc)
                 print('')  # newline
 
-    def default(self, line: str) -> None:
+    def default(self, line: str) -> bool:
+        # For some reason the supeclass definition of this method has
+        # type bool. This means this implementation needs to return
+        # booleans as well.
         command, *arg = line.split()
         try:
             func = getattr(self.gens, f'gen_{command}')
@@ -108,19 +118,24 @@ class LightControlCLI(cmd.Cmd):
                 func = self.do_bpm
                 arg = [line]
             except ValueError:
-                return self.unknown_command(command)
+                self.unknown_command(command)
+                return True
         try:
-            self.controller.data_gen = func(*arg)
+            self.put_generator(func(*arg))
+            return True
         except Exception as e:
             self.error_message(e)
+            return True
 
     def help_exit(self) -> None:
         self.header1('exit')
-        self.paragraph(self.do_exit.__doc__)
+
+        # str() is required because __doc__ can be None
+        self.paragraph(str(self.do_exit.__doc__))
 
     def help_help(self) -> None:
         self.header1('help')
-        self.paragraph(self.do_help.__doc__)
+        self.paragraph(str(self.do_help.__doc__))
         self.header2('Usage')
         self.paragraph('help')
         self.paragraph('List all available commands.', 6)
@@ -131,15 +146,15 @@ class LightControlCLI(cmd.Cmd):
 
     def help_blackout(self) -> None:
         self.header1('blackout')
-        self.paragraph(self.gens.gen_blackout.__doc__)
+        self.paragraph(str(self.gens.gen_blackout.__doc__))
 
     def help_mayday(self) -> None:
         self.header1('mayday')
-        self.paragraph(self.gens.gen_mayday.__doc__)
+        self.paragraph(str(self.gens.gen_mayday.__doc__))
 
     def help_colorwheel(self) -> None:
         self.header1('colorwheel')
-        self.paragraph(self.gens.gen_colorwheel.__doc__)
+        self.paragraph(str(self.gens.gen_colorwheel.__doc__))
 
     def do_random(self, arg: str) -> None:
         scenes = 5
@@ -148,11 +163,11 @@ class LightControlCLI(cmd.Cmd):
                 scenes = int(arg)
             except ValueError:
                 return print(f'argument is not a number: "{arg}"')
-        self.controller.data_gen = self.gens.gen_random(scenes)
+        self.put_generator(self.gens.gen_random(scenes))
 
     def help_random(self) -> None:
         self.header1('random')
-        self.paragraph(self.gens.gen_random.__doc__)
+        self.paragraph(str(self.gens.gen_random.__doc__))
         self.header2('Usage')
         self.paragraph('random')
         self.paragraph('Generate a random chase of 5 scenes.', 6)
@@ -164,7 +179,7 @@ class LightControlCLI(cmd.Cmd):
     def help_iso(self) -> None:
         color_aliases = ', '.join(self.gens.color_aliases.keys())
         self.header1('iso')
-        self.paragraph(self.gens.gen_iso.__doc__)
+        self.paragraph(str(self.gens.gen_iso.__doc__))
         self.header2('Usage')
         self.paragraph('iso <color>')
         self.paragraph(
@@ -180,7 +195,7 @@ class LightControlCLI(cmd.Cmd):
             'hexadecimals starting with "#" or one of the '
             'values mentioned above.', 6)
 
-    def do_bpm(self, arg) -> None:
+    def do_bpm(self, arg: str) -> None:
         """Set the chase speed in beats per minute (BPM)"""
         try:
             self.controller.clock.bpm = BPM(int(arg))
@@ -189,12 +204,8 @@ class LightControlCLI(cmd.Cmd):
 
     def help_bpm(self) -> None:
         self.header1('bpm')
-        self.paragraph(self.do_bpm.__doc__)
+        self.paragraph(str(self.do_bpm.__doc__))
         self.header2('Usage')
         self.paragraph('<number>', blankline=False)
         self.paragraph('bpm <number>')
         self.paragraph('Set chase speed to <number>.', 6)
-
-
-if (__name__ == '__main__'):
-    LightControlCLI('loop://').cmdloop()
