@@ -115,8 +115,10 @@ class LightControlCLI(cmd.Cmd):
         except AttributeError:
             try:
                 int(line)
-                func = self.do_bpm
-                arg = [line]
+                # The following should not execute if int() throws
+                # an exception
+                self.do_bpm(line)
+                return False
             except ValueError:
                 self.unknown_command(command)
                 return False
