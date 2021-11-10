@@ -13,7 +13,7 @@ To install, run:
 python -m pip install git+https://github.com/ikbentimkramer/usb-dmx.git
 ```
 
-Now, to start the CLI, run
+Now, to start the CLI, run:
 ```
 python -m usb_dmx <port>
 ```
