@@ -13,6 +13,7 @@ class DMXConnection(threading.Thread):
     STOPBITS = serial.STOPBITS_TWO
     STARTCODE = b'\x00'
     BREAK_LEN = 0.0001  # In seconds.
+
     def __init__(self, port: str, data_queue: queue.Queue[bytes]) -> None:
         super().__init__(daemon=True)
         if port.startswith('loop://'):  # used for testing
